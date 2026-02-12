@@ -1,0 +1,11 @@
+**/.git/**
+**/.github/**
+**/.vscode/**
+**/.sisyphus/**
+**/src/**
+**/out/**
+**/node_modules/**/.cache/**
+tsconfig.json
+esbuild.mjs
+.eslintrc.json
+package-lock.json

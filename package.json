@@ -3,7 +3,7 @@
   "displayName": ".NET Tasks Kit",
   "description": "Quickly generate and manage .NET build/publish tasks (tasks.json)",
   "version": "0.0.1",
-  "publisher": "dotnet-tasks-kit",
+  "publisher": "xingbinchen",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -80,7 +80,7 @@
     "publish",
     "csproj"
   ],
-  "author": "",
+  "author": "Xingbin Chen",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/XingbinChen/vscode-dotnet-tasks-kit/issues"
@@ -89,7 +89,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.2.3",
-    "@types/vscode": "^1.109.0",
+    "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
     "@vscode-elements/elements": "^2.5.0",
