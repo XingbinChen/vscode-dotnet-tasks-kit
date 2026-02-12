@@ -3,7 +3,7 @@
   "displayName": ".NET Tasks Kit",
   "description": "Quickly generate and manage .NET build/publish tasks (tasks.json)",
   "version": "0.0.1",
-  "publisher": "xingbinchen",
+  "publisher": "XingbinChen",
   "engines": {
     "vscode": "^1.85.0"
   },
