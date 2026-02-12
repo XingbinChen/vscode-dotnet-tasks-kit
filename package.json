@@ -1,0 +1,105 @@
+{
+  "name": "vscode-dotnet-tasks-kit",
+  "displayName": ".NET Tasks Kit",
+  "description": "Quickly generate and manage .NET build/publish tasks (tasks.json)",
+  "version": "0.0.1",
+  "publisher": "dotnet-tasks-kit",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dotnetTasksKit.createPublishTask",
+        "title": "Create Publish Task",
+        "category": ".NET Tasks"
+      },
+      {
+        "command": "dotnetTasksKit.createBuildTask",
+        "title": "Create Build Task",
+        "category": ".NET Tasks"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "dotnetTasksKit.contextMenu",
+        "label": ".NET Tasks"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "dotnetTasksKit.contextMenu",
+          "group": "navigation",
+          "when": "resourceExtname == .csproj || resourceExtname == .fsproj"
+        }
+      ],
+      "dotnetTasksKit.contextMenu": [
+        {
+          "command": "dotnetTasksKit.createPublishTask"
+        },
+        {
+          "command": "dotnetTasksKit.createBuildTask"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "dotnetTasksKit.createPublishTask"
+        },
+        {
+          "command": "dotnetTasksKit.createBuildTask"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.mjs",
+    "watch": "npm run check-types && npm run lint && node esbuild.mjs --watch",
+    "package": "npm run check-types && npm run lint && node esbuild.mjs --production",
+    "check-types": "tsc --noEmit -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test",
+    "pretest": "npm run compile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XingbinChen/vscode-dotnet-tasks-kit.git"
+  },
+  "keywords": [
+    "dotnet",
+    "tasks",
+    "build",
+    "publish",
+    "csproj"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/XingbinChen/vscode-dotnet-tasks-kit/issues"
+  },
+  "homepage": "https://github.com/XingbinChen/vscode-dotnet-tasks-kit#readme",
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.2.3",
+    "@types/vscode": "^1.109.0",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
+    "@vscode-elements/elements": "^2.5.0",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.27.3",
+    "eslint": "^8.57.0",
+    "mocha": "^11.7.5",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  }
+}
