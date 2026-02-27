@@ -60,7 +60,19 @@ window.addEventListener('message', (event: MessageEvent) => {
 	state.runtimeCatalog = parameterOptions(message, '--runtime');
 	state.verbosityCatalog = parameterOptions(message, '--verbosity', state.verbosityCatalog);
 
-	const firstProject = state.projects[0];
+	// Find pre-selected project from context menu (right-click)
+	let selectedProject = state.projects[0];
+	if (message.selectedUri) {
+		// Convert URI to relative path and find matching project
+		const selectedPath = message.selectedUri.split(/[\\/]/).pop();
+		const match = state.projects.find(p => p.path.endsWith(selectedPath || ''));
+		if (match) {
+			selectedProject = match;
+		}
+	}
+	
+	const firstProject = selectedProject;
+
 	const framework = firstProject?.frameworks[0] || 'net8.0';
 	const configs = firstProject?.configurations?.length ? firstProject.configurations : parameterOptions(message, '--configuration', ['Debug', 'Release']);
 	const configuration = configs.includes('Release') ? 'Release' : configs[0] || 'Release';

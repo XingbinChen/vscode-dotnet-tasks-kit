@@ -14,9 +14,9 @@ export class TaskGenerator {
 	/**
 	 * Generates a VS Code task for dotnet publish
 	 */
-	public static generatePublishTask(params: PublishTaskParams): VscodeTask {
+	public static generatePublishTask(params: PublishTaskParams, projectDir?: string): VscodeTask {
 		const args: string[] = ['publish', params.project];
-		
+
 		// Add standard parameters
 		if (params.configuration) { args.push('--configuration', params.configuration); }
 		if (params.framework) { args.push('--framework', params.framework); }
@@ -47,14 +47,15 @@ export class TaskGenerator {
 			command: 'dotnet',
 			args: args,
 			problemMatcher: '$msCompile',
-			group: 'build'
+			group: 'build',
+			options: projectDir ? { cwd: projectDir } : undefined
 		};
 	}
 
 	/**
 	 * Generates a VS Code task for dotnet build
 	 */
-	public static generateBuildTask(params: BuildTaskParams): VscodeTask {
+	public static generateBuildTask(params: BuildTaskParams, projectDir?: string): VscodeTask {
 		const args: string[] = ['build', params.project];
 
 		// Add standard parameters
@@ -80,7 +81,8 @@ export class TaskGenerator {
 			group: {
 				kind: 'build',
 				isDefault: true
-			}
+			},
+			options: projectDir ? { cwd: projectDir } : undefined
 		};
 	}
 
@@ -91,7 +93,7 @@ export class TaskGenerator {
 		const projectName = path.basename(params.project, path.extname(params.project));
 		const config = params.configuration ? ` - ${params.configuration}` : '';
 		const framework = params.framework ? ` - ${params.framework}` : '';
-		
+
 		// e.g. "publish: MyProject - Release - net8.0"
 		return `${type}: ${projectName}${config}${framework}`;
 	}
@@ -111,8 +113,7 @@ export class TaskGenerator {
 			}
 		}
 
-		// Constraint: arch vs runtime (mutually exclusive in UI usually, but CLI can technically mix but it's weird. 
-		// The constraints model says mutuallyExclusiveWith)
+		// Constraint: arch vs runtime
 		if (params.arch && params.runtime) {
 			errors.push(constraints.arch.description);
 		}

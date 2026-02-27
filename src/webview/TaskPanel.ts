@@ -14,7 +14,9 @@ export class TaskPanel {
 	private _disposables: vscode.Disposable[] = [];
 	private _currentCommand: DotnetCommand;
 
-	public static createOrShow(extensionUri: vscode.Uri, command: DotnetCommand) {
+	private _selectedUri: vscode.Uri | undefined;
+
+	public static createOrShow(extensionUri: vscode.Uri, command: DotnetCommand, uri?: vscode.Uri) {
 		const column = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
 			: undefined;
@@ -22,7 +24,7 @@ export class TaskPanel {
 		// If we already have a panel, show it.
 		if (TaskPanel.currentPanel) {
 			TaskPanel.currentPanel._panel.reveal(column);
-			TaskPanel.currentPanel._updateCommand(command);
+			TaskPanel.currentPanel._updateCommand(command, uri);
 			return;
 		}
 
@@ -37,13 +39,17 @@ export class TaskPanel {
 			}
 		);
 
-		TaskPanel.currentPanel = new TaskPanel(panel, extensionUri, command);
+		TaskPanel.currentPanel = new TaskPanel(panel, extensionUri, command, uri);
 	}
-
-	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, command: DotnetCommand) {
+	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, command: DotnetCommand, uri?: vscode.Uri) {
 		this._panel = panel;
 		this._extensionUri = extensionUri;
 		this._currentCommand = command;
+		this._selectedUri = uri;
+
+		// Set the webview's initial html content
+		this._currentCommand = command;
+		this._selectedUri = uri;
 
 		// Set the webview's initial html content
 		this._update();
@@ -91,9 +97,11 @@ export class TaskPanel {
 		}
 	}
 
-	private _updateCommand(command: DotnetCommand) {
+	private _updateCommand(command: DotnetCommand, uri?: vscode.Uri) {
 		this._currentCommand = command;
-		this._panel.title = `Create .NET ${command === DotnetCommand.publish ? 'Publish' : 'Build'} Task`;
+		if (uri) {
+			this._selectedUri = uri;
+		}
 		this._update();
 		this._sendInitData();
 	}
@@ -124,7 +132,8 @@ export class TaskPanel {
 			projects: projects,
 			projectProfiles,
 			pathSeparator: path.sep === '\\' ? '\\' : '/',
-			parameters: parameters
+			parameters: parameters,
+			selectedUri: this._selectedUri?.fsPath
 		};
 
 		this._panel.webview.postMessage(message);
