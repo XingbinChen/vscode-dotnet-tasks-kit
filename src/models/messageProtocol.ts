@@ -31,6 +31,7 @@ export type ExtensionMessage =
 		projectProfiles: ProjectProfile[];
 		pathSeparator: '/' | '\\';
 		parameters: ParameterMeta[];
+		selectedUri?: string;
 	}
 	| {
 		type: 'validationError';

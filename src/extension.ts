@@ -13,15 +13,15 @@ export function activate(context: vscode.ExtensionContext) {
 
   const createPublishTaskCommand = vscode.commands.registerCommand(
     "dotnetTasksKit.createPublishTask",
-    async () => {
-      TaskPanel.createOrShow(context.extensionUri, DotnetCommand.publish);
+    async (uri?: vscode.Uri) => {
+      TaskPanel.createOrShow(context.extensionUri, DotnetCommand.publish, uri);
     },
   );
 
   const createBuildTaskCommand = vscode.commands.registerCommand(
     "dotnetTasksKit.createBuildTask",
-    async () => {
-      TaskPanel.createOrShow(context.extensionUri, DotnetCommand.build);
+    async (uri?: vscode.Uri) => {
+      TaskPanel.createOrShow(context.extensionUri, DotnetCommand.build, uri);
     },
   );
 
