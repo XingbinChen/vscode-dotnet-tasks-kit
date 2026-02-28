@@ -65,20 +65,22 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        // 2. Calculate project directory (folder containing the csproj)
+        // 2. Calculate project directory relative to workspace
         // and convert project path to be relative to that directory
         const fullProjectPath = path.join(workspaceFolder.uri.fsPath, data.project);
         const projectDir = path.dirname(fullProjectPath);
         const projectFileName = path.basename(data.project);
+        // Get relative path from workspace folder to project directory
+        const relativeProjectDir = path.relative(workspaceFolder.uri.fsPath, projectDir);
 
         // 3. Generate Task with projectDir for cwd option
         // Create params with project path relative to projectDir (just filename)
         const projectParams = { ...data, project: projectFileName };
         let task;
         if (command === DotnetCommand.publish) {
-          task = TaskGenerator.generatePublishTask(projectParams as PublishTaskParams, projectDir);
+          task = TaskGenerator.generatePublishTask(projectParams as PublishTaskParams, relativeProjectDir);
         } else {
-          task = TaskGenerator.generateBuildTask(projectParams as BuildTaskParams, projectDir);
+          task = TaskGenerator.generateBuildTask(projectParams as BuildTaskParams, relativeProjectDir);
         }
 
         // 4. Write to tasks.json

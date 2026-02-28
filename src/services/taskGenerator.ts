@@ -48,7 +48,7 @@ export class TaskGenerator {
 			args: args,
 			problemMatcher: '$msCompile',
 			group: 'build',
-			options: projectDir ? { cwd: projectDir } : undefined
+			options: projectDir ? { cwd: `\${workspaceFolder}/${projectDir}` } : undefined
 		};
 	}
 
@@ -82,7 +82,7 @@ export class TaskGenerator {
 				kind: 'build',
 				isDefault: true
 			},
-			options: projectDir ? { cwd: projectDir } : undefined
+			options: projectDir ? { cwd: `\${workspaceFolder}/${projectDir}` } : undefined
 		};
 	}
 
