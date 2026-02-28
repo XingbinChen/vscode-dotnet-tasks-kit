@@ -1,4 +1,6 @@
 import * as vscode from "vscode";
+import * as path from 'path';
+import * as fs from 'fs';
 import { TaskPanel } from "./webview/TaskPanel";
 import {
   DotnetCommand,
@@ -32,42 +34,53 @@ export function activate(context: vscode.ExtensionContext) {
       command: DotnetCommand,
     ) => {
       try {
-        // 1. Validate (Optional, UI should handle most)
-        // TaskGenerator.validateConstraints(data) ...
-
-        // 2. Generate Task
-        let task;
-        if (command === DotnetCommand.publish) {
-          task = TaskGenerator.generatePublishTask(data as PublishTaskParams);
-        } else {
-          task = TaskGenerator.generateBuildTask(data as BuildTaskParams);
-        }
-
-        // 3. Find Workspace Folder
+        // 1. Find Workspace Folder
         // data.project is a relative path like "src/MyProject.csproj"
-        // We need to find which workspace folder it belongs to.
-        // If single root, it's easy. If multi-root, we check each.
         let workspaceFolder: vscode.WorkspaceFolder | undefined;
 
         if (vscode.workspace.workspaceFolders) {
-          // Default to first folder if single root
           if (vscode.workspace.workspaceFolders.length === 1) {
             workspaceFolder = vscode.workspace.workspaceFolders[0];
           } else {
-            // Multi-root handling logic
-            // In multi-root, vscode.workspace.asRelativePath returns "FolderName/path/to/file"
-            // We can try to parse the FolderName from the start of data.project
-            // for (const folder of vscode.workspace.workspaceFolders) { ... }
-
-            // For MVP, we will assume single root or first root.
-            // TODO: Improve multi-root resolution
-            workspaceFolder = vscode.workspace.workspaceFolders[0];
+            // Multi-root: try to find the workspace folder that contains the project
+            for (const folder of vscode.workspace.workspaceFolders) {
+              const projectPath = path.join(folder.uri.fsPath, data.project);
+              try {
+                if (fs.existsSync(projectPath)) {
+                  workspaceFolder = folder;
+                  break;
+                }
+              } catch {
+                // Continue to next folder
+              }
+            }
+            if (!workspaceFolder) {
+              workspaceFolder = vscode.workspace.workspaceFolders[0];
+            }
           }
         }
 
         if (!workspaceFolder) {
           vscode.window.showErrorMessage("No workspace folder found.");
           return;
+        }
+
+        // 2. Calculate project directory relative to workspace
+        // and convert project path to be relative to that directory
+        const fullProjectPath = path.join(workspaceFolder.uri.fsPath, data.project);
+        const projectDir = path.dirname(fullProjectPath);
+        const projectFileName = path.basename(data.project);
+        // Get relative path from workspace folder to project directory
+        const relativeProjectDir = path.relative(workspaceFolder.uri.fsPath, projectDir).replace(/\\/g, '/');
+
+        // 3. Generate Task with projectDir for cwd option
+        // Create params with project path relative to projectDir (just filename)
+        const projectParams = { ...data, project: projectFileName };
+        let task;
+        if (command === DotnetCommand.publish) {
+          task = TaskGenerator.generatePublishTask(projectParams as PublishTaskParams, relativeProjectDir);
+        } else {
+          task = TaskGenerator.generateBuildTask(projectParams as BuildTaskParams, relativeProjectDir);
         }
 
         // 4. Write to tasks.json
