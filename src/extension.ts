@@ -71,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
         const projectDir = path.dirname(fullProjectPath);
         const projectFileName = path.basename(data.project);
         // Get relative path from workspace folder to project directory
-        const relativeProjectDir = path.relative(workspaceFolder.uri.fsPath, projectDir);
+        const relativeProjectDir = path.relative(workspaceFolder.uri.fsPath, projectDir).replace(/\\/g, '/');
 
         // 3. Generate Task with projectDir for cwd option
         // Create params with project path relative to projectDir (just filename)
