@@ -84,4 +84,4 @@ npm test
 
 ## License
 
-ISC
+MIT

@@ -2,7 +2,7 @@
   "name": "vscode-dotnet-tasks-kit",
   "displayName": ".NET Tasks Kit",
   "description": "Quickly generate and manage .NET build/publish tasks (tasks.json)",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "XingbinChen",
   "engines": {
     "vscode": "^1.85.0"
@@ -81,7 +81,7 @@
     "csproj"
   ],
   "author": "Xingbin Chen",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/XingbinChen/vscode-dotnet-tasks-kit/issues"
   },
