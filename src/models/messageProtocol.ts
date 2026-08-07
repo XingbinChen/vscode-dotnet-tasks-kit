@@ -32,6 +32,8 @@ export type ExtensionMessage =
 		pathSeparator: '/' | '\\';
 		parameters: ParameterMeta[];
 		selectedUri?: string;
+		/** When set, the form opens in edit mode pre-filled from an existing task */
+		existingParams?: PublishTaskParams | BuildTaskParams;
 	}
 	| {
 		type: 'validationError';

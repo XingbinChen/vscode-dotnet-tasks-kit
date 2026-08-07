@@ -2,7 +2,8 @@
   "name": "vscode-dotnet-tasks-kit",
   "displayName": ".NET Tasks Kit",
   "description": "Quickly generate and manage .NET build/publish tasks (tasks.json)",
-  "version": "0.0.3",
+  "icon": "images/icon.png",
+  "version": "0.0.4",
   "publisher": "XingbinChen",
   "engines": {
     "vscode": "^1.85.0"
@@ -25,6 +26,48 @@
         "command": "dotnetTasksKit.createBuildTask",
         "title": "Create Build Task",
         "category": ".NET Tasks"
+      },
+      {
+        "command": "dotnetTasksKit.runTask",
+        "title": "Run Task",
+        "category": ".NET Tasks",
+        "icon": "$(play)"
+      },
+      {
+        "command": "dotnetTasksKit.editTask",
+        "title": "Edit Task",
+        "category": ".NET Tasks",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "dotnetTasksKit.refreshTasks",
+        "title": "Refresh",
+        "category": ".NET Tasks",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dotnetTasksKit",
+          "title": ".NET Tasks",
+          "icon": "images/activity-bar.svg"
+        }
+      ]
+    },
+    "views": {
+      "dotnetTasksKit": [
+        {
+          "id": "dotnetTasksKit.tasksView",
+          "name": "Tasks",
+          "icon": "images/activity-bar.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "dotnetTasksKit.tasksView",
+        "contents": "No dotnet publish/build tasks found.\n[Create Publish Task](command:dotnetTasksKit.createPublishTask)\n[Create Build Task](command:dotnetTasksKit.createBuildTask)"
       }
     ],
     "submenus": [
@@ -49,12 +92,43 @@
           "command": "dotnetTasksKit.createBuildTask"
         }
       ],
+      "view/title": [
+        {
+          "command": "dotnetTasksKit.refreshTasks",
+          "when": "view == dotnetTasksKit.tasksView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "dotnetTasksKit.runTask",
+          "when": "view == dotnetTasksKit.tasksView && viewItem == dotnetTask",
+          "group": "inline@1"
+        },
+        {
+          "command": "dotnetTasksKit.editTask",
+          "when": "view == dotnetTasksKit.tasksView && viewItem == dotnetTask",
+          "group": "inline@2"
+        }
+      ],
       "commandPalette": [
         {
           "command": "dotnetTasksKit.createPublishTask"
         },
         {
           "command": "dotnetTasksKit.createBuildTask"
+        },
+        {
+          "command": "dotnetTasksKit.runTask",
+          "when": "false"
+        },
+        {
+          "command": "dotnetTasksKit.editTask",
+          "when": "false"
+        },
+        {
+          "command": "dotnetTasksKit.refreshTasks",
+          "when": "false"
         }
       ]
     }
