@@ -1,9 +1,19 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { DotnetCommand } from '../models/taskDefinition';
+import { BuildTaskParams, DotnetCommand, PublishTaskParams } from '../models/taskDefinition';
 import { ExtensionMessage, ProjectProfile, WebviewMessage } from '../models/messageProtocol';
 import { PUBLISH_PARAMETERS, BUILD_PARAMETERS } from '../models/dotnetParameters';
 import { scanProjectsWithMetadata } from '../services/projectScanner';
+
+/**
+ * Identifies an existing task in tasks.json that is being edited
+ */
+export interface EditTaskContext {
+	folder: vscode.WorkspaceFolder;
+	taskIndex: number;
+	originalLabel: string;
+	existingParams: PublishTaskParams | BuildTaskParams;
+}
 
 export class TaskPanel {
 	public static currentPanel: TaskPanel | undefined;
@@ -13,10 +23,11 @@ export class TaskPanel {
 	private readonly _extensionUri: vscode.Uri;
 	private _disposables: vscode.Disposable[] = [];
 	private _currentCommand: DotnetCommand;
+	private _editContext: EditTaskContext | undefined;
 
 	private _selectedUri: vscode.Uri | undefined;
 
-	public static createOrShow(extensionUri: vscode.Uri, command: DotnetCommand, uri?: vscode.Uri) {
+	public static createOrShow(extensionUri: vscode.Uri, command: DotnetCommand, uri?: vscode.Uri, editContext?: EditTaskContext) {
 		const column = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
 			: undefined;
@@ -24,14 +35,14 @@ export class TaskPanel {
 		// If we already have a panel, show it.
 		if (TaskPanel.currentPanel) {
 			TaskPanel.currentPanel._panel.reveal(column);
-			TaskPanel.currentPanel._updateCommand(command, uri);
+			TaskPanel.currentPanel._updateCommand(command, uri, editContext);
 			return;
 		}
 
 		// Otherwise, create a new panel.
 		const panel = vscode.window.createWebviewPanel(
 			TaskPanel.viewType,
-			`Create .NET ${command === DotnetCommand.publish ? 'Publish' : 'Build'} Task`,
+			TaskPanel._titleFor(command, editContext),
 			column || vscode.ViewColumn.One,
 			{
 				enableScripts: true,
@@ -39,17 +50,20 @@ export class TaskPanel {
 			}
 		);
 
-		TaskPanel.currentPanel = new TaskPanel(panel, extensionUri, command, uri);
+		TaskPanel.currentPanel = new TaskPanel(panel, extensionUri, command, uri, editContext);
 	}
-	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, command: DotnetCommand, uri?: vscode.Uri) {
+
+	private static _titleFor(command: DotnetCommand, editContext?: EditTaskContext): string {
+		const kind = command === DotnetCommand.publish ? 'Publish' : 'Build';
+		return `${editContext ? 'Edit' : 'Create'} .NET ${kind} Task`;
+	}
+
+	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, command: DotnetCommand, uri?: vscode.Uri, editContext?: EditTaskContext) {
 		this._panel = panel;
 		this._extensionUri = extensionUri;
 		this._currentCommand = command;
 		this._selectedUri = uri;
-
-		// Set the webview's initial html content
-		this._currentCommand = command;
-		this._selectedUri = uri;
+		this._editContext = editContext;
 
 		// Set the webview's initial html content
 		this._update();
@@ -63,11 +77,7 @@ export class TaskPanel {
 			(message: WebviewMessage) => {
 				switch (message.type) {
 					case 'submit':
-						// Handle submit (will be implemented later via command handler injection or event)
-						// For now just log
-						console.log('Received submit:', message.data);
-						// TODO: Trigger generation and file writing
-						vscode.commands.executeCommand('dotnetTasksKit.internal.onTaskSubmit', message.data, this._currentCommand);
+						vscode.commands.executeCommand('dotnetTasksKit.internal.onTaskSubmit', message.data, this._currentCommand, this._editContext);
 						this.dispose();
 						return;
 					case 'cancel':
@@ -97,8 +107,10 @@ export class TaskPanel {
 		}
 	}
 
-	private _updateCommand(command: DotnetCommand, uri?: vscode.Uri) {
+	private _updateCommand(command: DotnetCommand, uri?: vscode.Uri, editContext?: EditTaskContext) {
 		this._currentCommand = command;
+		this._editContext = editContext;
+		this._panel.title = TaskPanel._titleFor(command, editContext);
 		if (uri) {
 			this._selectedUri = uri;
 		}
@@ -133,7 +145,8 @@ export class TaskPanel {
 			projectProfiles,
 			pathSeparator: path.sep === '\\' ? '\\' : '/',
 			parameters: parameters,
-			selectedUri: this._selectedUri?.fsPath
+			selectedUri: this._selectedUri?.fsPath,
+			existingParams: this._editContext?.existingParams
 		};
 
 		this._panel.webview.postMessage(message);

@@ -77,4 +77,82 @@ export class TasksFileService {
 
 		return tasks.tasks.some((t: VscodeTask) => t.label === label);
 	}
+
+	/**
+	 * Reads all tasks from .vscode/tasks.json.
+	 * Returns an empty array when the file is missing or cannot be parsed,
+	 * so read-only consumers (e.g. the tasks tree view) stay stable.
+	 */
+	public static async getTasks(workspaceFolder: vscode.WorkspaceFolder): Promise<VscodeTask[]> {
+		const tasksJsonPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'tasks.json');
+		if (!fs.existsSync(tasksJsonPath)) {
+			return [];
+		}
+
+		const content = fs.readFileSync(tasksJsonPath, 'utf8');
+		const errors: jsonc.ParseError[] = [];
+		const rootNode = jsonc.parseTree(content, errors);
+		if (errors.length > 0 || !rootNode) {
+			return [];
+		}
+
+		const tasksNode = jsonc.findNodeAtLocation(rootNode, ['tasks']);
+		if (!tasksNode) {
+			return [];
+		}
+
+		const tasks = jsonc.getNodeValue(tasksNode);
+		return Array.isArray(tasks) ? tasks as VscodeTask[] : [];
+	}
+
+	/**
+	 * Surgically updates a single task in .vscode/tasks.json, preserving all
+	 * other tasks, comments, and unmanaged fields of the task itself.
+	 * Only the given fields are touched; passing cwd as undefined removes it.
+	 *
+	 * @param expectedLabel Label the task had when editing started; the update
+	 * fails if the task at taskIndex no longer carries it (file was edited meanwhile)
+	 */
+	public static async updateTaskInTasksJson(
+		workspaceFolder: vscode.WorkspaceFolder,
+		taskIndex: number,
+		expectedLabel: string,
+		updates: { label?: string; args?: VscodeTask['args']; cwd?: string }
+	): Promise<void> {
+		const tasksJsonPath = path.join(workspaceFolder.uri.fsPath, '.vscode', 'tasks.json');
+		if (!fs.existsSync(tasksJsonPath)) {
+			throw new Error(`tasks.json not found at ${tasksJsonPath}`);
+		}
+
+		const modificationOptions: jsonc.ModificationOptions = { formattingOptions: { insertSpaces: true, tabSize: 4 } };
+		let content = fs.readFileSync(tasksJsonPath, 'utf8');
+
+		const errors: jsonc.ParseError[] = [];
+		const rootNode = jsonc.parseTree(content, errors);
+		if (errors.length > 0 || !rootNode) {
+			throw new Error(`Invalid tasks.json file at ${tasksJsonPath}`);
+		}
+
+		const tasksNode = jsonc.findNodeAtLocation(rootNode, ['tasks']);
+		const tasks = tasksNode ? jsonc.getNodeValue(tasksNode) : undefined;
+		const current: VscodeTask | undefined = Array.isArray(tasks) ? tasks[taskIndex] : undefined;
+		if (!current || current.label !== expectedLabel) {
+			throw new Error(`Task "${expectedLabel}" was not found at its previous position in tasks.json. The file may have been edited; please try again.`);
+		}
+
+		if (updates.label !== undefined && updates.label !== current.label) {
+			content = jsonc.applyEdits(content, jsonc.modify(content, ['tasks', taskIndex, 'label'], updates.label, modificationOptions));
+		}
+		if (updates.args) {
+			content = jsonc.applyEdits(content, jsonc.modify(content, ['tasks', taskIndex, 'args'], updates.args, modificationOptions));
+		}
+		if (updates.cwd) {
+			content = jsonc.applyEdits(content, jsonc.modify(content, ['tasks', taskIndex, 'options', 'cwd'], updates.cwd, modificationOptions));
+		} else if (current.options && 'cwd' in current.options) {
+			// undefined value removes the property
+			content = jsonc.applyEdits(content, jsonc.modify(content, ['tasks', taskIndex, 'options', 'cwd'], undefined, modificationOptions));
+		}
+
+		fs.writeFileSync(tasksJsonPath, content, 'utf8');
+	}
 }

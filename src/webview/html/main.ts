@@ -30,6 +30,7 @@ interface UiState {
 	projects: ProjectProfile[];
 	form: FormModel;
 	outputTouched: boolean;
+	editMode: boolean;
 	runtimeCatalog: string[];
 	verbosityCatalog: string[];
 	pathSeparator: '/' | '\\';
@@ -43,6 +44,7 @@ const state: UiState = {
 	projects: [],
 	form: {},
 	outputTouched: false,
+	editMode: false,
 	runtimeCatalog: [],
 	verbosityCatalog: ['quiet', 'minimal', 'normal', 'detailed', 'diagnostic'],
 	pathSeparator: '/'
@@ -59,7 +61,20 @@ window.addEventListener('message', (event: MessageEvent) => {
 	state.pathSeparator = message.pathSeparator;
 	state.runtimeCatalog = parameterOptions(message, '--runtime');
 	state.verbosityCatalog = parameterOptions(message, '--verbosity', state.verbosityCatalog);
+	state.editMode = !!message.existingParams;
 
+	if (message.existingParams) {
+		prefillForm(message.existingParams);
+	} else {
+		initDefaultForm(message);
+	}
+	applyPublishConstraints();
+	render();
+});
+
+vscode.postMessage({ type: 'requestProjects' });
+
+function initDefaultForm(message: Extract<ExtensionMessage, { type: 'init' }>): void {
 	// Find pre-selected project from context menu (right-click)
 	let selectedProject = state.projects[0];
 	if (message.selectedUri) {
@@ -70,7 +85,7 @@ window.addEventListener('message', (event: MessageEvent) => {
 			selectedProject = match;
 		}
 	}
-	
+
 	const firstProject = selectedProject;
 
 	const framework = firstProject?.frameworks[0] || 'net8.0';
@@ -97,11 +112,60 @@ window.addEventListener('message', (event: MessageEvent) => {
 		)
 	};
 	state.outputTouched = false;
-	applyPublishConstraints();
-	render();
-});
+}
 
-vscode.postMessage({ type: 'requestProjects' });
+function prefillForm(params: PublishTaskParams | BuildTaskParams): void {
+	const pub = params as PublishTaskParams;
+	const build = params as BuildTaskParams;
+
+	// The scanned project list may not contain the task's project (e.g. the task
+	// was hand-written); add a synthetic entry so the select can display it.
+	if (params.project && !state.projects.some((p) => p.path === params.project)) {
+		state.projects = [{
+			path: params.project,
+			frameworks: [],
+			runtimeIdentifiers: [],
+			platforms: [],
+			configurations: [],
+			publishProfiles: []
+		}, ...state.projects];
+	}
+
+	const project = state.projects.find((p) => p.path === params.project);
+
+	state.form = {
+		taskLabel: params.taskLabel,
+		project: params.project,
+		framework: params.framework || project?.frameworks[0] || 'net8.0',
+		configuration: params.configuration || 'Release',
+		platform: params.arch || project?.platforms[0] || 'Any CPU',
+		publishProfileName: '',
+		deploymentMode: pub.selfContained ? 'self-contained' : 'framework-dependent',
+		runtimeSelection: pub.runtime || portableRuntime,
+		verbosity: params.verbosity || state.verbosityCatalog[2] || state.verbosityCatalog[0] || 'normal',
+		output: params.output,
+		noBuild: pub.noBuild,
+		noRestore: params.noRestore,
+		versionSuffix: pub.versionSuffix,
+		publishSingleFile: pub.publishSingleFile,
+		publishTrimmed: pub.publishTrimmed,
+		publishReadyToRun: pub.publishReadyToRun,
+		publishAot: pub.publishAot,
+		noIncremental: build.noIncremental,
+		noDependencies: build.noDependencies
+	};
+	// Keep the task's output path instead of regenerating the default
+	state.outputTouched = !!params.output;
+	if (!state.form.output) {
+		state.form.output = buildDefaultOutputPath(
+			state.command,
+			state.form.configuration,
+			state.form.framework,
+			state.form.runtimeSelection,
+			state.form.deploymentMode
+		);
+	}
+}
 
 function parameterOptions(message: Extract<ExtensionMessage, { type: 'init' }>, name: string, fallback: string[] = []): string[] {
 	const item = message.parameters.find((p) => p.name === name);
@@ -115,29 +179,37 @@ function selectedProject(): ProjectProfile | undefined {
 	return state.projects.find((p) => p.path === state.form.project) || state.projects[0];
 }
 
+/** Appends the current form value when it is not part of the catalog (edit mode) */
+function withCurrent(options: string[], current: string | undefined): string[] {
+	return current && !options.includes(current) ? [...options, current] : options;
+}
+
 function runtimeOptions(): string[] {
 	const project = selectedProject();
 	const merged = [...(project?.runtimeIdentifiers || []), ...state.runtimeCatalog];
 	const unique = Array.from(new Set(merged));
-	if (state.form.deploymentMode === 'self-contained') {
-		return unique;
-	}
-	return [portableRuntime, ...unique];
+	const base = state.form.deploymentMode === 'self-contained'
+		? unique
+		: [portableRuntime, ...unique];
+	return withCurrent(base, state.form.runtimeSelection);
 }
 
 function frameworkOptions(): string[] {
 	const project = selectedProject();
-	return project?.frameworks?.length ? project.frameworks : ['net8.0'];
+	const base = project?.frameworks?.length ? project.frameworks : ['net8.0'];
+	return withCurrent(base, state.form.framework);
 }
 
 function platformOptions(): string[] {
 	const project = selectedProject();
-	return project?.platforms?.length ? project.platforms : ['Any CPU', 'x64', 'x86', 'arm64'];
+	const base = project?.platforms?.length ? project.platforms : ['Any CPU', 'x64', 'x86', 'arm64'];
+	return withCurrent(base, state.form.platform);
 }
 
 function configurationOptions(): string[] {
 	const project = selectedProject();
-	return project?.configurations?.length ? project.configurations : ['Debug', 'Release'];
+	const base = project?.configurations?.length ? project.configurations : ['Debug', 'Release'];
+	return withCurrent(base, state.form.configuration);
 }
 
 function publishProfiles(): ProjectProfile['publishProfiles'] {
@@ -212,9 +284,10 @@ function render(): void {
 	app.innerHTML = '';
 	app.appendChild(styles());
 
+	const kind = state.command === DotnetCommand.publish ? 'Publish' : 'Build';
 	const shell = node('div', 'shell');
 	const header = node('div', 'header');
-	header.appendChild(node('h1', 'title', state.command === DotnetCommand.publish ? 'Create Publish Task' : 'Create Build Task'));
+	header.appendChild(node('h1', 'title', `${state.editMode ? 'Edit' : 'Create'} ${kind} Task`));
 	header.appendChild(node('p', 'subtitle', 'Visual Studio style options with project-aware defaults'));
 	shell.appendChild(header);
 
@@ -225,7 +298,7 @@ function render(): void {
 
 	const actions = node('div', 'actions');
 	const submit = document.createElement('vscode-button');
-	submit.textContent = 'Create Task';
+	submit.textContent = state.editMode ? 'Save Changes' : 'Create Task';
 	submit.addEventListener('click', submitForm);
 	actions.appendChild(submit);
 
@@ -370,7 +443,7 @@ function sidePanel(): HTMLElement {
 	const panel = node('div', 'panel side');
 
 	const advancedBody = node('div', 'collapse-body');
-	advancedBody.appendChild(selectField('Verbosity', state.verbosityCatalog, state.form.verbosity || state.verbosityCatalog[2] || 'normal', (value) => {
+	advancedBody.appendChild(selectField('Verbosity', withCurrent(state.verbosityCatalog, state.form.verbosity), state.form.verbosity || state.verbosityCatalog[2] || 'normal', (value) => {
 		state.form.verbosity = value;
 	}));
 	advancedBody.appendChild(toggleField('No build', !!state.form.noBuild, (value) => {
@@ -395,13 +468,43 @@ function sidePanel(): HTMLElement {
 	panel.appendChild(collapsible('Advanced', 'Optional command flags', advancedBody, false));
 
 	const previewBody = node('div', 'collapse-body');
-	previewBody.appendChild(node(
-		'div',
-		'preview',
-		state.form.output || buildDefaultOutputPath(state.command, state.form.configuration, state.form.framework, state.form.runtimeSelection, state.form.deploymentMode)
-	));
-	panel.appendChild(collapsible('Preview', 'Task arguments will use these values', previewBody, false));
+	previewBody.appendChild(node('div', 'preview', buildCommandPreview()));
+	panel.appendChild(collapsible('Preview', 'Command line that will be written to tasks.json', previewBody, true));
 	return panel;
+}
+
+/** Mirrors TaskGenerator arg order so the preview matches the generated task */
+function buildCommandPreview(): string {
+	const payload = toPayload();
+	const args: string[] = [state.command, payload.project || '<project>'];
+	const pushOption = (flag: string, value: string | undefined) => {
+		if (value) {
+			args.push(flag, value);
+		}
+	};
+	pushOption('--configuration', payload.configuration);
+	pushOption('--framework', payload.framework);
+	pushOption('--runtime', payload.runtime);
+	pushOption('--output', payload.output);
+	pushOption('--arch', payload.arch);
+	pushOption('--verbosity', payload.verbosity);
+	if (state.command === DotnetCommand.publish) {
+		const pub = payload as PublishTaskParams;
+		pushOption('--version-suffix', pub.versionSuffix);
+		if (pub.selfContained) { args.push('--self-contained'); }
+		if (pub.noBuild) { args.push('--no-build'); }
+		if (pub.noRestore) { args.push('--no-restore'); }
+		if (pub.publishSingleFile) { args.push('-p:PublishSingleFile=true'); }
+		if (pub.publishTrimmed) { args.push('-p:PublishTrimmed=true'); }
+		if (pub.publishReadyToRun) { args.push('-p:PublishReadyToRun=true'); }
+		if (pub.publishAot) { args.push('-p:PublishAot=true'); }
+	} else {
+		const build = payload as BuildTaskParams;
+		if (build.noRestore) { args.push('--no-restore'); }
+		if (build.noIncremental) { args.push('--no-incremental'); }
+		if (build.noDependencies) { args.push('--no-dependencies'); }
+	}
+	return `dotnet ${args.join(' ')}`;
 }
 
 function collapsible(title: string, subtitle: string, body: HTMLElement, open: boolean): HTMLElement {

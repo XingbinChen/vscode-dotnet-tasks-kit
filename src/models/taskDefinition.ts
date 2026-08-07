@@ -58,7 +58,7 @@ export interface VscodeTask {
 	label: string;
 	type: 'shell' | 'process';
 	command: string;
-	args?: (string | number | boolean)[];
+	args?: (string | number | boolean | { value: string; quoting?: string })[];
 	group?: {
 		kind: 'build' | 'test' | 'run';
 		isDefault?: boolean;
