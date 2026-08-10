@@ -26,7 +26,8 @@ Stop memorizing `dotnet` CLI flags and fighting JSON commas. .NET Tasks Kit give
 **Task dashboard in the Activity Bar**
 
 - Every `dotnet publish` / `dotnet build` task from your workspace's `tasks.json`, one click away
-- Inline **Run** and **Edit** actions on each task
+- Inline **Run** and **Edit** actions on each task, plus **Reveal Output Folder** to open the task's `--output` directory in the file explorer
+- Create publish/build tasks right from the view title bar
 - Refreshes automatically when `tasks.json` changes; multi-root workspaces supported
 
 ![.NET Tasks activity bar view with run and edit actions](images/screenshot-tasks-view.png)

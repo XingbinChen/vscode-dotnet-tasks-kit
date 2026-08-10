@@ -64,6 +64,22 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const revealTaskOutputCommand = vscode.commands.registerCommand(
+    "dotnetTasksKit.revealTaskOutput",
+    async (item?: DotnetTaskItem) => {
+      if (!item?.outputUri) {
+        return;
+      }
+      if (!fs.existsSync(item.outputUri.fsPath)) {
+        vscode.window.showWarningMessage(
+          `Output folder does not exist yet: ${item.outputUri.fsPath}`,
+        );
+        return;
+      }
+      await vscode.commands.executeCommand("revealFileInOS", item.outputUri);
+    },
+  );
+
   const editTaskCommand = vscode.commands.registerCommand(
     "dotnetTasksKit.editTask",
     async (item?: DotnetTaskItem) => {
@@ -171,6 +187,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(createBuildTaskCommand);
   context.subscriptions.push(refreshTasksCommand);
   context.subscriptions.push(runTaskCommand);
+  context.subscriptions.push(revealTaskOutputCommand);
   context.subscriptions.push(editTaskCommand);
   context.subscriptions.push(onTaskSubmitCommand);
 }

@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as path from 'path';
 import { TaskParser } from '../../services/taskParser';
 import { TaskGenerator } from '../../services/taskGenerator';
 import {
@@ -201,5 +202,68 @@ suite('TaskParser Test Suite', () => {
 
 		assert.ok(parsed);
 		assert.strictEqual(parsed.params.project, 'src/App/App.csproj');
+	});
+
+	test('getOutputDir should resolve output against options.cwd', () => {
+		const folder = { uri: { fsPath: path.resolve('fake-ws') } };
+		const task: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['publish', 'Quarry.csproj', '--output', 'bin/Publish/net8.0/win-x64/'],
+			options: { cwd: '${workspaceFolder}/src/Quarry' }
+		};
+
+		assert.strictEqual(
+			TaskParser.getOutputDir(task, folder),
+			path.resolve(folder.uri.fsPath, 'src/Quarry', 'bin/Publish/net8.0/win-x64/')
+		);
+	});
+
+	test('getOutputDir should resolve output against the workspace root when there is no cwd', () => {
+		const folder = { uri: { fsPath: path.resolve('fake-ws') } };
+		const task: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['build', 'App.csproj', '-o', 'artifacts/build']
+		};
+
+		assert.strictEqual(
+			TaskParser.getOutputDir(task, folder),
+			path.resolve(folder.uri.fsPath, 'artifacts/build')
+		);
+	});
+
+	test('getOutputDir should handle --output=value syntax and absolute output paths', () => {
+		const folder = { uri: { fsPath: path.resolve('fake-ws') } };
+		const absoluteOutput = path.resolve('somewhere/else');
+		const inlineTask: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['publish', 'App.csproj', `--output=${absoluteOutput}`]
+		};
+
+		assert.strictEqual(TaskParser.getOutputDir(inlineTask, folder), absoluteOutput);
+	});
+
+	test('getOutputDir should return undefined when there is no output argument or it is unresolvable', () => {
+		const folder = { uri: { fsPath: path.resolve('fake-ws') } };
+		const noOutput: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['publish', 'App.csproj']
+		};
+		const variableOutput: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['publish', 'App.csproj', '--output', '${workspaceFolder}/artifacts']
+		};
+
+		assert.strictEqual(TaskParser.getOutputDir(noOutput, folder), undefined);
+		assert.strictEqual(TaskParser.getOutputDir(variableOutput, folder), undefined);
 	});
 });

@@ -20,12 +20,14 @@
       {
         "command": "dotnetTasksKit.createPublishTask",
         "title": "Create Publish Task",
-        "category": ".NET Tasks"
+        "category": ".NET Tasks",
+        "icon": "$(package)"
       },
       {
         "command": "dotnetTasksKit.createBuildTask",
         "title": "Create Build Task",
-        "category": ".NET Tasks"
+        "category": ".NET Tasks",
+        "icon": "$(tools)"
       },
       {
         "command": "dotnetTasksKit.runTask",
@@ -38,6 +40,12 @@
         "title": "Edit Task",
         "category": ".NET Tasks",
         "icon": "$(edit)"
+      },
+      {
+        "command": "dotnetTasksKit.revealTaskOutput",
+        "title": "Reveal Output Folder",
+        "category": ".NET Tasks",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "dotnetTasksKit.refreshTasks",
@@ -94,21 +102,36 @@
       ],
       "view/title": [
         {
+          "command": "dotnetTasksKit.createPublishTask",
+          "when": "view == dotnetTasksKit.tasksView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "dotnetTasksKit.createBuildTask",
+          "when": "view == dotnetTasksKit.tasksView",
+          "group": "navigation@2"
+        },
+        {
           "command": "dotnetTasksKit.refreshTasks",
           "when": "view == dotnetTasksKit.tasksView",
-          "group": "navigation"
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
         {
           "command": "dotnetTasksKit.runTask",
-          "when": "view == dotnetTasksKit.tasksView && viewItem == dotnetTask",
+          "when": "view == dotnetTasksKit.tasksView && viewItem =~ /^dotnetTask/",
           "group": "inline@1"
         },
         {
           "command": "dotnetTasksKit.editTask",
-          "when": "view == dotnetTasksKit.tasksView && viewItem == dotnetTask",
+          "when": "view == dotnetTasksKit.tasksView && viewItem =~ /^dotnetTask/",
           "group": "inline@2"
+        },
+        {
+          "command": "dotnetTasksKit.revealTaskOutput",
+          "when": "view == dotnetTasksKit.tasksView && viewItem == dotnetTask",
+          "group": "inline@3"
         }
       ],
       "commandPalette": [
@@ -124,6 +147,10 @@
         },
         {
           "command": "dotnetTasksKit.editTask",
+          "when": "false"
+        },
+        {
+          "command": "dotnetTasksKit.revealTaskOutput",
           "when": "false"
         },
         {

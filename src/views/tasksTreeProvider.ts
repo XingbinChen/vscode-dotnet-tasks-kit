@@ -11,11 +11,13 @@ export class DotnetTaskItem extends vscode.TreeItem {
 		public readonly folder: vscode.WorkspaceFolder,
 		public readonly taskIndex: number,
 		public readonly task: VscodeTask,
-		public readonly dotnetCommand: DotnetCommand
+		public readonly dotnetCommand: DotnetCommand,
+		public readonly outputUri?: vscode.Uri
 	) {
 		super(task.label, vscode.TreeItemCollapsibleState.None);
 		this.description = dotnetCommand;
-		this.contextValue = 'dotnetTask';
+		// 'dotnetTaskNoOutput' hides the reveal-output button via when clauses
+		this.contextValue = outputUri ? 'dotnetTask' : 'dotnetTaskNoOutput';
 		this.iconPath = new vscode.ThemeIcon(dotnetCommand === DotnetCommand.publish ? 'package' : 'tools');
 		const args = (task.args || []).map((a) => String(a)).join(' ');
 		this.tooltip = `${folder.name}: dotnet ${args}`;
@@ -73,7 +75,8 @@ export class TasksTreeProvider implements vscode.TreeDataProvider<vscode.TreeIte
 		tasks.forEach((task, index) => {
 			const dotnetCommand = TaskParser.getDotnetCommand(task);
 			if (dotnetCommand) {
-				items.push(new DotnetTaskItem(folder, index, task, dotnetCommand));
+				const outputDir = TaskParser.getOutputDir(task, folder);
+				items.push(new DotnetTaskItem(folder, index, task, dotnetCommand, outputDir ? vscode.Uri.file(outputDir) : undefined));
 			}
 		});
 		return items;
