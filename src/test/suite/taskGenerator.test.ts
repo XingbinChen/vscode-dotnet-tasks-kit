@@ -32,7 +32,9 @@ suite('TaskGenerator Test Suite', () => {
 			taskLabel: 'Test AOT',
 			project: 'TestProject.csproj',
 			publishAot: true,
-			publishSingleFile: true
+			publishSingleFile: true,
+			includeAllContentForSelfExtract: true,
+			includeNativeLibrariesForSelfExtract: true
 		};
 
 		const task = TaskGenerator.generatePublishTask(params);
@@ -40,6 +42,8 @@ suite('TaskGenerator Test Suite', () => {
 		// Check for presence of args
 		assert.ok(task.args?.includes('-p:PublishAot=true'));
 		assert.ok(task.args?.includes('-p:PublishSingleFile=true'));
+		assert.ok(task.args?.includes('-p:IncludeAllContentForSelfExtract=true'));
+		assert.ok(task.args?.includes('-p:IncludeNativeLibrariesForSelfExtract=true'));
 	});
 
 	test('generateBuildTask should generate correct args', () => {
@@ -82,5 +86,19 @@ suite('TaskGenerator Test Suite', () => {
 		const errors = TaskGenerator.validateConstraints(params);
 		assert.ok(errors.length > 0);
 		assert.ok(errors[0].includes('Self-contained requires'));
+	});
+
+	test('validateConstraints should detect self-extract options without single file', () => {
+		const params: PublishTaskParams = {
+			taskLabel: 'Invalid',
+			project: 'P',
+			selfContained: true,
+			runtime: 'win-x64',
+			includeNativeLibrariesForSelfExtract: true,
+			// Missing publishSingleFile
+		};
+
+		const errors = TaskGenerator.validateConstraints(params);
+		assert.ok(errors.some((e) => e.includes('requires publish single file')));
 	});
 });

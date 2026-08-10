@@ -151,6 +151,8 @@ function prefillForm(params: PublishTaskParams | BuildTaskParams): void {
 		publishTrimmed: pub.publishTrimmed,
 		publishReadyToRun: pub.publishReadyToRun,
 		publishAot: pub.publishAot,
+		includeAllContentForSelfExtract: pub.includeAllContentForSelfExtract,
+		includeNativeLibrariesForSelfExtract: pub.includeNativeLibrariesForSelfExtract,
 		noIncremental: build.noIncremental,
 		noDependencies: build.noDependencies
 	};
@@ -261,6 +263,8 @@ function applyPublishConstraints(): void {
 		if (isPortable) {
 			state.form.publishSingleFile = false;
 			state.form.publishReadyToRun = false;
+			state.form.includeAllContentForSelfExtract = false;
+			state.form.includeNativeLibrariesForSelfExtract = false;
 		}
 	}
 
@@ -380,7 +384,20 @@ function primaryPanel(): HTMLElement {
 		const portable = state.form.deploymentMode === 'framework-dependent' && state.form.runtimeSelection === portableRuntime;
 		panel.appendChild(toggleField('Generate single file', !!state.form.publishSingleFile, (value) => {
 			state.form.publishSingleFile = value;
+			if (!value) {
+				// Self-extract options only apply to single-file publishes
+				state.form.includeAllContentForSelfExtract = false;
+				state.form.includeNativeLibrariesForSelfExtract = false;
+			}
+			render();
 		}, portable));
+		const selfExtractDisabled = portable || !state.form.publishSingleFile;
+		panel.appendChild(toggleField('Include all content for self-extract', !!state.form.includeAllContentForSelfExtract, (value) => {
+			state.form.includeAllContentForSelfExtract = value;
+		}, selfExtractDisabled));
+		panel.appendChild(toggleField('Include native libraries for self-extract', !!state.form.includeNativeLibrariesForSelfExtract, (value) => {
+			state.form.includeNativeLibrariesForSelfExtract = value;
+		}, selfExtractDisabled));
 		panel.appendChild(toggleField('ReadyToRun', !!state.form.publishReadyToRun, (value) => {
 			state.form.publishReadyToRun = value;
 		}, portable));
@@ -495,6 +512,8 @@ function buildCommandPreview(): string {
 		if (pub.noBuild) { args.push('--no-build'); }
 		if (pub.noRestore) { args.push('--no-restore'); }
 		if (pub.publishSingleFile) { args.push('-p:PublishSingleFile=true'); }
+		if (pub.includeAllContentForSelfExtract) { args.push('-p:IncludeAllContentForSelfExtract=true'); }
+		if (pub.includeNativeLibrariesForSelfExtract) { args.push('-p:IncludeNativeLibrariesForSelfExtract=true'); }
 		if (pub.publishTrimmed) { args.push('-p:PublishTrimmed=true'); }
 		if (pub.publishReadyToRun) { args.push('-p:PublishReadyToRun=true'); }
 		if (pub.publishAot) { args.push('-p:PublishAot=true'); }
@@ -550,7 +569,9 @@ function toPayload(): PublishTaskParams | BuildTaskParams {
 			publishSingleFile: state.form.publishSingleFile,
 			publishTrimmed: state.form.publishTrimmed,
 			publishReadyToRun: state.form.publishReadyToRun,
-			publishAot: state.form.publishAot
+			publishAot: state.form.publishAot,
+			includeAllContentForSelfExtract: state.form.includeAllContentForSelfExtract,
+			includeNativeLibrariesForSelfExtract: state.form.includeNativeLibrariesForSelfExtract
 		};
 	}
 

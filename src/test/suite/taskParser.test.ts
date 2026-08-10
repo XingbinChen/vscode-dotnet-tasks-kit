@@ -45,7 +45,8 @@ suite('TaskParser Test Suite', () => {
 			verbosity: 'normal',
 			selfContained: true,
 			publishSingleFile: true,
-			publishAot: true
+			publishAot: true,
+			includeNativeLibrariesForSelfExtract: true
 		};
 		const task = TaskGenerator.generatePublishTask(params, 'src/Quarry');
 
@@ -64,6 +65,7 @@ suite('TaskParser Test Suite', () => {
 		assert.strictEqual(parsedParams.selfContained, true);
 		assert.strictEqual(parsedParams.publishSingleFile, true);
 		assert.strictEqual(parsedParams.publishAot, true);
+		assert.strictEqual(parsedParams.includeNativeLibrariesForSelfExtract, true);
 		assert.deepStrictEqual(parsed.extraArgs, []);
 	});
 

@@ -37,6 +37,8 @@ export class TaskGenerator {
 
 		// Add MSBuild properties
 		if (params.publishSingleFile) { args.push('-p:PublishSingleFile=true'); }
+		if (params.includeAllContentForSelfExtract) { args.push('-p:IncludeAllContentForSelfExtract=true'); }
+		if (params.includeNativeLibrariesForSelfExtract) { args.push('-p:IncludeNativeLibrariesForSelfExtract=true'); }
 		if (params.publishTrimmed) { args.push('-p:PublishTrimmed=true'); }
 		if (params.publishReadyToRun) { args.push('-p:PublishReadyToRun=true'); }
 		if (params.publishAot) { args.push('-p:PublishAot=true'); }
@@ -131,6 +133,14 @@ export class TaskGenerator {
 		// Constraint: PublishTrimmed requires SelfContained
 		if (params.publishTrimmed && !params.selfContained) {
 			errors.push(constraints.publishTrimmed.description);
+		}
+
+		// Constraint: self-extract options require PublishSingleFile
+		if (params.includeAllContentForSelfExtract && !params.publishSingleFile) {
+			errors.push(constraints.includeAllContentForSelfExtract.description);
+		}
+		if (params.includeNativeLibrariesForSelfExtract && !params.publishSingleFile) {
+			errors.push(constraints.includeNativeLibrariesForSelfExtract.description);
 		}
 
 		return errors;

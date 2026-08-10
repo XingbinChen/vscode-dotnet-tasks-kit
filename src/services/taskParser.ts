@@ -58,7 +58,9 @@ const MSBUILD_BOOL_PROPS: Record<string, keyof PublishTaskParams> = {
 	'publishsinglefile': 'publishSingleFile',
 	'publishtrimmed': 'publishTrimmed',
 	'publishreadytorun': 'publishReadyToRun',
-	'publishaot': 'publishAot'
+	'publishaot': 'publishAot',
+	'includeallcontentforselfextract': 'includeAllContentForSelfExtract',
+	'includenativelibrariesforselfextract': 'includeNativeLibrariesForSelfExtract'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 

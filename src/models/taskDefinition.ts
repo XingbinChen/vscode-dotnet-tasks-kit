@@ -30,6 +30,8 @@ export interface PublishTaskParams {
 	publishTrimmed?: boolean;
 	publishReadyToRun?: boolean;
 	publishAot?: boolean;
+	includeAllContentForSelfExtract?: boolean;
+	includeNativeLibrariesForSelfExtract?: boolean;
 }
 
 /**

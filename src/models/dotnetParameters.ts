@@ -202,6 +202,22 @@ export const PUBLISH_PARAMETERS: ParameterMeta[] = [
 		tier: 3,
 		group: 'Deployment',
 	},
+	{
+		name: 'IncludeAllContentForSelfExtract',
+		label: 'Include All Content For Self-Extract',
+		description: 'Extract all files (including managed assemblies) next to the single-file executable (MSBuild property)',
+		type: 'boolean',
+		tier: 3,
+		group: 'Deployment',
+	},
+	{
+		name: 'IncludeNativeLibrariesForSelfExtract',
+		label: 'Include Native Libraries For Self-Extract',
+		description: 'Extract native libraries next to the single-file executable (MSBuild property)',
+		type: 'boolean',
+		tier: 3,
+		group: 'Deployment',
+	},
 ];
 
 /**
@@ -333,5 +349,13 @@ export const PARAMETER_CONSTRAINTS = {
 	publishAot: {
 		minFramework: 'net8.0',
 		description: 'AOT available in .NET 8.0+',
+	},
+	includeAllContentForSelfExtract: {
+		requiresTrue: ['publishSingleFile'],
+		description: 'Include all content for self-extract requires publish single file',
+	},
+	includeNativeLibrariesForSelfExtract: {
+		requiresTrue: ['publishSingleFile'],
+		description: 'Include native libraries for self-extract requires publish single file',
 	},
 };
