@@ -90,6 +90,16 @@ npm test           # run tests in a VS Code Extension Host
 
 Press `F5` in VS Code to launch an Extension Development Host. See `AGENTS.md` for architecture details.
 
+## Publishing
+
+Publishing uses GitHub Actions with Marketplace Trusted Publishing (OIDC), without a PAT.
+
+1. In [Marketplace publisher management](https://marketplace.visualstudio.com/manage/publishers/), open `XingbinChen` → **Trusted Publishing** → **Create**. Set repository owner to `XingbinChen`, repository to `vscode-dotnet-tasks-kit`, workflow to `publish.yml`, and leave environment empty. The policy name can be `GitHub Actions publish`.
+2. Commit and push `.github/workflows/publish.yml` to the repository's default branch (`main`) so the manual workflow is available.
+3. Update the version in `package.json` and `package-lock.json`, commit, and push before each release. In GitHub, select **Actions → Publish extension → Run workflow**, choose the branch containing the release, and run it.
+
+The workflow runs regression tests and publishes the selected branch's existing version. The publish command runs the production build automatically; it does not increment the version. Each Marketplace release needs a new version number.
+
 ## License
 
 MIT

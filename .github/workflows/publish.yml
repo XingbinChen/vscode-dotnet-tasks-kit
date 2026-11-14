@@ -1,0 +1,33 @@
+name: Publish extension
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketplace-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run regression tests
+        run: |
+          npx tsc -p ./
+          npx mocha --ui tdd out/test/suite/taskParser.test.js out/test/suite/taskGenerator.test.js out/test/suite/webview.test.js
+      - name: Build and publish to Visual Studio Marketplace
+        # The project's vsce 3.x does not support --oidc.
+        run: npx --yes @vscode/vsce@4.1.1 publish --oidc
