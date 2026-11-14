@@ -135,6 +135,22 @@ suite('TaskParser Test Suite', () => {
 		assert.deepStrictEqual(parsed.extraArgs, []);
 	});
 
+	test('parse should preserve explicit self-contained false through editing', () => {
+		for (const flags of [['--self-contained', 'false'], ['--self-contained=false']]) {
+			const task: VscodeTask = {
+				label: 'Framework-dependent', type: 'shell', command: 'dotnet',
+				args: ['publish', 'App.csproj', '--framework', 'net10.0', ...flags]
+			};
+			const parsed = TaskParser.parse(task)!;
+			assert.strictEqual((parsed.params as PublishTaskParams).selfContained, false);
+			const saved = TaskGenerator.generatePublishTask(parsed.params as PublishTaskParams);
+			const index = saved.args!.indexOf('--self-contained');
+			assert.ok(index >= 0);
+			assert.strictEqual(saved.args![index + 1], 'false');
+			assert.deepStrictEqual(parsed.extraArgs, []);
+		}
+	});
+
 	test('parse should handle boolean flags with explicit values', () => {
 		const task: VscodeTask = {
 			label: 'bool',

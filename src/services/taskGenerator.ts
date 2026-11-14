@@ -29,7 +29,7 @@ export class TaskGenerator {
 		if (params.versionSuffix) { args.push('--version-suffix', params.versionSuffix); }
 
 		// Add boolean flags
-		if (params.selfContained) { args.push('--self-contained'); }
+		if (params.selfContained !== undefined) { args.push('--self-contained', String(params.selfContained)); }
 		if (params.noBuild) { args.push('--no-build'); }
 		if (params.noRestore) { args.push('--no-restore'); }
 		if (params.useCurrentRuntime) { args.push('--use-current-runtime'); }

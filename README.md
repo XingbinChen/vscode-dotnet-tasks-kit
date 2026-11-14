@@ -20,6 +20,8 @@ Stop memorizing `dotnet` CLI flags and fighting JSON commas. .NET Tasks Kit give
 **Project-aware defaults**
 
 - Target frameworks, runtime identifiers, platforms, and configurations are read directly from your `.csproj` / `.fsproj` and `Directory.Build.props`
+- Framework selects a target declared by the project (`TargetFramework` / `TargetFrameworks`), not an SDK version. Update the project first to target a different framework. If no framework is detected, the CLI uses the project default.
+- Deployment Mode independently writes `--self-contained false` (Framework-dependent) or `--self-contained true` (Self-contained), in both the preview and saved task.
 - Publish profiles (`Properties/PublishProfiles/*.pubxml`) prefill the form in one click
 - Output paths follow standard .NET conventions (`bin/<Configuration>/<Framework>/publish/...`)
 

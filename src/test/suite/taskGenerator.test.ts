@@ -3,6 +3,18 @@ import { TaskGenerator } from '../../services/taskGenerator';
 import { PublishTaskParams, DotnetCommand, BuildTaskParams } from '../../models/taskDefinition';
 
 suite('TaskGenerator Test Suite', () => {
+	test('framework-dependent publishing should explicitly exclude the runtime', () => {
+		for (const runtime of [undefined, 'win-x64']) {
+			const task = TaskGenerator.generatePublishTask({
+				taskLabel: '', project: 'App.csproj', framework: 'net10.0', runtime, selfContained: false
+			});
+			const index = task.args!.indexOf('--self-contained');
+			assert.ok(index >= 0, 'Framework-dependent publishing must override project defaults');
+			assert.strictEqual(task.args![index + 1], 'false');
+			assert.ok(task.args!.includes('net10.0'));
+		}
+	});
+
 	test('generatePublishTask should include standard parameters', () => {
 		const params: PublishTaskParams = {
 			taskLabel: 'Test Publish',
@@ -23,7 +35,7 @@ suite('TaskGenerator Test Suite', () => {
 			'--configuration', 'Release',
 			'--framework', 'net8.0',
 			'--runtime', 'win-x64',
-			'--self-contained'
+			'--self-contained', 'true'
 		]);
 	});
 

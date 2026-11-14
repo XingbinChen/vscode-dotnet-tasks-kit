@@ -169,9 +169,11 @@ export class TaskParser {
 				if (value === undefined && index + 1 < tokens.length && /^(true|false)$/i.test(tokens[index + 1])) {
 					value = tokens[++index];
 				}
-				// An explicit `false` equals the CLI default, so it is simply omitted
+				// SelfContained=false must override project properties and runtime-dependent defaults.
 				if (value === undefined || value.toLowerCase() === 'true') {
 					params[boolFlags[lowerFlag]] = true;
+				} else if (lowerFlag === '--self-contained' && value.toLowerCase() === 'false') {
+					params.selfContained = false;
 				}
 				continue;
 			}
