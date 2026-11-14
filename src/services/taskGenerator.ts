@@ -29,7 +29,7 @@ export class TaskGenerator {
 		if (params.versionSuffix) { args.push('--version-suffix', params.versionSuffix); }
 
 		// Add boolean flags
-		if (params.selfContained) { args.push('--self-contained'); }
+		if (params.selfContained !== undefined) { args.push('--self-contained', String(params.selfContained)); }
 		if (params.noBuild) { args.push('--no-build'); }
 		if (params.noRestore) { args.push('--no-restore'); }
 		if (params.useCurrentRuntime) { args.push('--use-current-runtime'); }
@@ -37,6 +37,8 @@ export class TaskGenerator {
 
 		// Add MSBuild properties
 		if (params.publishSingleFile) { args.push('-p:PublishSingleFile=true'); }
+		if (params.includeAllContentForSelfExtract) { args.push('-p:IncludeAllContentForSelfExtract=true'); }
+		if (params.includeNativeLibrariesForSelfExtract) { args.push('-p:IncludeNativeLibrariesForSelfExtract=true'); }
 		if (params.publishTrimmed) { args.push('-p:PublishTrimmed=true'); }
 		if (params.publishReadyToRun) { args.push('-p:PublishReadyToRun=true'); }
 		if (params.publishAot) { args.push('-p:PublishAot=true'); }
@@ -131,6 +133,14 @@ export class TaskGenerator {
 		// Constraint: PublishTrimmed requires SelfContained
 		if (params.publishTrimmed && !params.selfContained) {
 			errors.push(constraints.publishTrimmed.description);
+		}
+
+		// Constraint: self-extract options require PublishSingleFile
+		if (params.includeAllContentForSelfExtract && !params.publishSingleFile) {
+			errors.push(constraints.includeAllContentForSelfExtract.description);
+		}
+		if (params.includeNativeLibrariesForSelfExtract && !params.publishSingleFile) {
+			errors.push(constraints.includeNativeLibrariesForSelfExtract.description);
 		}
 
 		return errors;

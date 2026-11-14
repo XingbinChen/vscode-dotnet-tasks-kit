@@ -125,7 +125,7 @@ async function readProjectMetadata(filePath: string): Promise<ProjectMetadata> {
 		};
 	} catch {
 		return {
-			frameworks: ['net8.0'],
+			frameworks: [],
 			runtimeIdentifiers: [],
 			platforms: ['Any CPU', 'x64', 'x86', 'arm64'],
 			configurations: ['Debug', 'Release'],
@@ -138,7 +138,7 @@ function extractFrameworks(content: string): string[] {
 	const single = firstTagValue(content, 'TargetFramework');
 	const multi = firstTagValue(content, 'TargetFrameworks');
 	const values = single ? [single] : splitBySemicolon(multi);
-	return values.length > 0 ? unique(values) : ['net8.0'];
+	return unique(values);
 }
 
 function extractRuntimeIdentifiers(content: string): string[] {

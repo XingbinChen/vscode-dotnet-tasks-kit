@@ -58,7 +58,9 @@ const MSBUILD_BOOL_PROPS: Record<string, keyof PublishTaskParams> = {
 	'publishsinglefile': 'publishSingleFile',
 	'publishtrimmed': 'publishTrimmed',
 	'publishreadytorun': 'publishReadyToRun',
-	'publishaot': 'publishAot'
+	'publishaot': 'publishAot',
+	'includeallcontentforselfextract': 'includeAllContentForSelfExtract',
+	'includenativelibrariesforselfextract': 'includeNativeLibrariesForSelfExtract'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -167,9 +169,11 @@ export class TaskParser {
 				if (value === undefined && index + 1 < tokens.length && /^(true|false)$/i.test(tokens[index + 1])) {
 					value = tokens[++index];
 				}
-				// An explicit `false` equals the CLI default, so it is simply omitted
+				// SelfContained=false must override project properties and runtime-dependent defaults.
 				if (value === undefined || value.toLowerCase() === 'true') {
 					params[boolFlags[lowerFlag]] = true;
+				} else if (lowerFlag === '--self-contained' && value.toLowerCase() === 'false') {
+					params.selfContained = false;
 				}
 				continue;
 			}
@@ -203,6 +207,41 @@ export class TaskParser {
 	}
 
 	/**
+	 * Resolves the task's --output path to an absolute directory: the output
+	 * argument is relative to options.cwd, which in turn is relative to the
+	 * workspace folder. Returns undefined when there is no output argument or
+	 * a path cannot be resolved inside the workspace.
+	 */
+	public static getOutputDir(task: VscodeTask, workspaceFolder: WorkspaceFolderLike): string | undefined {
+		const tokens = TaskParser.argValues(task);
+		let output: string | undefined;
+		for (let i = 0; i < tokens.length; i++) {
+			const raw = tokens[i];
+			let flag = raw;
+			let inlineValue: string | undefined;
+			const eq = raw.indexOf('=');
+			if (raw.startsWith('-') && eq > 0) {
+				flag = raw.slice(0, eq);
+				inlineValue = raw.slice(eq + 1);
+			}
+			const lowerFlag = flag.toLowerCase();
+			if (lowerFlag === '--output' || lowerFlag === '-o') {
+				output = inlineValue ?? (i + 1 < tokens.length ? tokens[i + 1] : undefined);
+				break;
+			}
+		}
+		if (!output || output.includes('${')) {
+			return undefined;
+		}
+
+		const dir = TaskParser.resolveCwdToRelativeDir(task, workspaceFolder);
+		if (dir === undefined) {
+			return undefined;
+		}
+		return path.resolve(workspaceFolder.uri.fsPath, dir, output);
+	}
+
+	/**
 	 * Maps the project argument back to a workspace-relative path using the
 	 * task's options.cwd. Returns undefined when the cwd cannot be resolved
 	 * inside the workspace (e.g. named multi-root variables, outside paths).
@@ -216,6 +255,27 @@ export class TaskParser {
 		if (!cwd) {
 			// No cwd: the project argument is already relative to the workspace root
 			return projectToken;
+		}
+
+		const dir = TaskParser.resolveCwdToRelativeDir(task, workspaceFolder);
+		if (dir === undefined) {
+			return undefined;
+		}
+		return dir ? `${dir}/${projectToken}` : projectToken;
+	}
+
+	/**
+	 * Resolves options.cwd to a workspace-relative directory ('' when the task
+	 * has no cwd). Returns undefined for cwds that cannot be mapped into the
+	 * workspace (named multi-root variables, absolute paths outside it).
+	 */
+	private static resolveCwdToRelativeDir(
+		task: VscodeTask,
+		workspaceFolder?: WorkspaceFolderLike
+	): string | undefined {
+		const cwd = task.options?.cwd;
+		if (!cwd) {
+			return '';
 		}
 
 		let dir = cwd.replace(/\\/g, '/');
@@ -237,7 +297,6 @@ export class TaskParser {
 		}
 		// Otherwise dir is already relative to the workspace root
 
-		dir = dir.replace(/\/+$/, '');
-		return dir ? `${dir}/${projectToken}` : projectToken;
+		return dir.replace(/\/+$/, '');
 	}
 }

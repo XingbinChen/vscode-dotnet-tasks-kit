@@ -20,13 +20,16 @@ Stop memorizing `dotnet` CLI flags and fighting JSON commas. .NET Tasks Kit give
 **Project-aware defaults**
 
 - Target frameworks, runtime identifiers, platforms, and configurations are read directly from your `.csproj` / `.fsproj` and `Directory.Build.props`
+- Framework selects a target declared by the project (`TargetFramework` / `TargetFrameworks`), not an SDK version. Update the project first to target a different framework. If no framework is detected, the CLI uses the project default.
+- Deployment Mode independently writes `--self-contained false` (Framework-dependent) or `--self-contained true` (Self-contained), in both the preview and saved task.
 - Publish profiles (`Properties/PublishProfiles/*.pubxml`) prefill the form in one click
 - Output paths follow standard .NET conventions (`bin/<Configuration>/<Framework>/publish/...`)
 
 **Task dashboard in the Activity Bar**
 
 - Every `dotnet publish` / `dotnet build` task from your workspace's `tasks.json`, one click away
-- Inline **Run** and **Edit** actions on each task
+- Inline **Run** and **Edit** actions on each task, plus **Reveal Output Folder** to open the task's `--output` directory in the file explorer
+- Create publish/build tasks right from the view title bar
 - Refreshes automatically when `tasks.json` changes; multi-root workspaces supported
 
 ![.NET Tasks activity bar view with run and edit actions](images/screenshot-tasks-view.png)
@@ -86,6 +89,16 @@ npm test           # run tests in a VS Code Extension Host
 ```
 
 Press `F5` in VS Code to launch an Extension Development Host. See `AGENTS.md` for architecture details.
+
+## Publishing
+
+Publishing uses GitHub Actions with Marketplace Trusted Publishing (OIDC), without a PAT.
+
+1. In [Marketplace publisher management](https://marketplace.visualstudio.com/manage/publishers/), open `XingbinChen` → **Trusted Publishing** → **Create**. Set repository owner to `XingbinChen`, repository to `vscode-dotnet-tasks-kit`, workflow to `publish.yml`, and leave environment empty. The policy name can be `GitHub Actions publish`.
+2. Commit and push `.github/workflows/publish.yml` to the repository's default branch (`main`) so the manual workflow is available.
+3. Update the version in `package.json` and `package-lock.json`, commit, and push before each release. In GitHub, select **Actions → Publish extension → Run workflow**, choose the branch containing the release, and run it.
+
+The workflow runs regression tests and publishes the selected branch's existing version. The publish command runs the production build automatically; it does not increment the version. Each Marketplace release needs a new version number.
 
 ## License
 

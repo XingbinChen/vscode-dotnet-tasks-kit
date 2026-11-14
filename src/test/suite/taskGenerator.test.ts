@@ -3,6 +3,18 @@ import { TaskGenerator } from '../../services/taskGenerator';
 import { PublishTaskParams, DotnetCommand, BuildTaskParams } from '../../models/taskDefinition';
 
 suite('TaskGenerator Test Suite', () => {
+	test('framework-dependent publishing should explicitly exclude the runtime', () => {
+		for (const runtime of [undefined, 'win-x64']) {
+			const task = TaskGenerator.generatePublishTask({
+				taskLabel: '', project: 'App.csproj', framework: 'net10.0', runtime, selfContained: false
+			});
+			const index = task.args!.indexOf('--self-contained');
+			assert.ok(index >= 0, 'Framework-dependent publishing must override project defaults');
+			assert.strictEqual(task.args![index + 1], 'false');
+			assert.ok(task.args!.includes('net10.0'));
+		}
+	});
+
 	test('generatePublishTask should include standard parameters', () => {
 		const params: PublishTaskParams = {
 			taskLabel: 'Test Publish',
@@ -23,7 +35,7 @@ suite('TaskGenerator Test Suite', () => {
 			'--configuration', 'Release',
 			'--framework', 'net8.0',
 			'--runtime', 'win-x64',
-			'--self-contained'
+			'--self-contained', 'true'
 		]);
 	});
 
@@ -32,7 +44,9 @@ suite('TaskGenerator Test Suite', () => {
 			taskLabel: 'Test AOT',
 			project: 'TestProject.csproj',
 			publishAot: true,
-			publishSingleFile: true
+			publishSingleFile: true,
+			includeAllContentForSelfExtract: true,
+			includeNativeLibrariesForSelfExtract: true
 		};
 
 		const task = TaskGenerator.generatePublishTask(params);
@@ -40,6 +54,8 @@ suite('TaskGenerator Test Suite', () => {
 		// Check for presence of args
 		assert.ok(task.args?.includes('-p:PublishAot=true'));
 		assert.ok(task.args?.includes('-p:PublishSingleFile=true'));
+		assert.ok(task.args?.includes('-p:IncludeAllContentForSelfExtract=true'));
+		assert.ok(task.args?.includes('-p:IncludeNativeLibrariesForSelfExtract=true'));
 	});
 
 	test('generateBuildTask should generate correct args', () => {
@@ -82,5 +98,19 @@ suite('TaskGenerator Test Suite', () => {
 		const errors = TaskGenerator.validateConstraints(params);
 		assert.ok(errors.length > 0);
 		assert.ok(errors[0].includes('Self-contained requires'));
+	});
+
+	test('validateConstraints should detect self-extract options without single file', () => {
+		const params: PublishTaskParams = {
+			taskLabel: 'Invalid',
+			project: 'P',
+			selfContained: true,
+			runtime: 'win-x64',
+			includeNativeLibrariesForSelfExtract: true,
+			// Missing publishSingleFile
+		};
+
+		const errors = TaskGenerator.validateConstraints(params);
+		assert.ok(errors.some((e) => e.includes('requires publish single file')));
 	});
 });

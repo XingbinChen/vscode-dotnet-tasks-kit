@@ -88,7 +88,7 @@ function initDefaultForm(message: Extract<ExtensionMessage, { type: 'init' }>): 
 
 	const firstProject = selectedProject;
 
-	const framework = firstProject?.frameworks[0] || 'net8.0';
+	const framework = firstProject?.frameworks[0] || '';
 	const configs = firstProject?.configurations?.length ? firstProject.configurations : parameterOptions(message, '--configuration', ['Debug', 'Release']);
 	const configuration = configs.includes('Release') ? 'Release' : configs[0] || 'Release';
 	const platform = firstProject?.platforms[0] || 'Any CPU';
@@ -136,7 +136,7 @@ function prefillForm(params: PublishTaskParams | BuildTaskParams): void {
 	state.form = {
 		taskLabel: params.taskLabel,
 		project: params.project,
-		framework: params.framework || project?.frameworks[0] || 'net8.0',
+		framework: params.framework || project?.frameworks[0] || '',
 		configuration: params.configuration || 'Release',
 		platform: params.arch || project?.platforms[0] || 'Any CPU',
 		publishProfileName: '',
@@ -151,6 +151,8 @@ function prefillForm(params: PublishTaskParams | BuildTaskParams): void {
 		publishTrimmed: pub.publishTrimmed,
 		publishReadyToRun: pub.publishReadyToRun,
 		publishAot: pub.publishAot,
+		includeAllContentForSelfExtract: pub.includeAllContentForSelfExtract,
+		includeNativeLibrariesForSelfExtract: pub.includeNativeLibrariesForSelfExtract,
 		noIncremental: build.noIncremental,
 		noDependencies: build.noDependencies
 	};
@@ -196,7 +198,7 @@ function runtimeOptions(): string[] {
 
 function frameworkOptions(): string[] {
 	const project = selectedProject();
-	const base = project?.frameworks?.length ? project.frameworks : ['net8.0'];
+	const base = project?.frameworks?.length ? project.frameworks : [''];
 	return withCurrent(base, state.form.framework);
 }
 
@@ -224,19 +226,19 @@ function buildDefaultOutputPath(
 	deploymentMode?: DeploymentMode
 ): string {
 	const c = configuration || 'Release';
-	const f = framework || 'net8.0';
 	const sep = state.pathSeparator;
+	const base = ['bin', c, framework].filter(Boolean).join(sep);
 	if (command === DotnetCommand.build) {
 		if (runtimeSelection && runtimeSelection !== portableRuntime) {
-			return `bin${sep}${c}${sep}${f}${sep}${runtimeSelection}${sep}`;
+			return `${base}${sep}${runtimeSelection}${sep}`;
 		}
-		return `bin${sep}${c}${sep}${f}${sep}`;
+		return `${base}${sep}`;
 	}
 	const hasRuntime = runtimeSelection && !(deploymentMode === 'framework-dependent' && runtimeSelection === portableRuntime);
 	if (hasRuntime) {
-		return `bin${sep}${c}${sep}${f}${sep}publish${sep}${runtimeSelection}${sep}`;
+		return `${base}${sep}publish${sep}${runtimeSelection}${sep}`;
 	}
-	return `bin${sep}${c}${sep}${f}${sep}publish${sep}`;
+	return `${base}${sep}publish${sep}`;
 }
 
 function applyPublishConstraints(): void {
@@ -261,6 +263,8 @@ function applyPublishConstraints(): void {
 		if (isPortable) {
 			state.form.publishSingleFile = false;
 			state.form.publishReadyToRun = false;
+			state.form.includeAllContentForSelfExtract = false;
+			state.form.includeNativeLibrariesForSelfExtract = false;
 		}
 	}
 
@@ -320,10 +324,9 @@ function primaryPanel(): HTMLElement {
 	}));
 	panel.appendChild(selectField('Project', state.projects.map((p) => p.path), state.form.project || '', (value) => {
 		state.form.project = value;
-		const frameworks = frameworkOptions();
 		const platforms = platformOptions();
 		const configs = configurationOptions();
-		state.form.framework = frameworks[0] || 'net8.0';
+		state.form.framework = selectedProject()?.frameworks[0] || '';
 		state.form.platform = platforms[0] || 'Any CPU';
 		state.form.configuration = configs.includes('Release') ? 'Release' : (configs[0] || 'Release');
 		state.form.publishProfileName = '';
@@ -339,11 +342,12 @@ function primaryPanel(): HTMLElement {
 		applyPublishConstraints();
 		render();
 	}));
-	panel.appendChild(selectField('Framework', frameworkOptions(), state.form.framework || frameworkOptions()[0] || 'net8.0', (value) => {
+	panel.appendChild(selectField('Framework', frameworkOptions(), state.form.framework || '', (value) => {
 		state.form.framework = value;
 		applyPublishConstraints();
 		render();
-	}));
+	}, { labelMap: new Map([['', '(Project default)']]) }));
+	panel.appendChild(node('p', 'section-sub', 'Target framework from the selected project (TargetFramework / TargetFrameworks), not the .NET SDK version. To target another framework, update the project first.'));
 	panel.appendChild(selectField('Platform', platformOptions(), state.form.platform || platformOptions()[0], (value) => {
 		state.form.platform = value;
 	}));
@@ -371,6 +375,7 @@ function primaryPanel(): HTMLElement {
 				['self-contained', 'Self-contained']
 			])
 		}));
+		panel.appendChild(node('p', 'section-sub', 'Deployment Mode controls --self-contained independently of Framework: false uses the target machine runtime; true includes the runtime.'));
 		panel.appendChild(selectField('Target Runtime', runtimeOptions(), state.form.runtimeSelection || portableRuntime, (value) => {
 			state.form.runtimeSelection = value;
 			applyPublishConstraints();
@@ -380,7 +385,20 @@ function primaryPanel(): HTMLElement {
 		const portable = state.form.deploymentMode === 'framework-dependent' && state.form.runtimeSelection === portableRuntime;
 		panel.appendChild(toggleField('Generate single file', !!state.form.publishSingleFile, (value) => {
 			state.form.publishSingleFile = value;
+			if (!value) {
+				// Self-extract options only apply to single-file publishes
+				state.form.includeAllContentForSelfExtract = false;
+				state.form.includeNativeLibrariesForSelfExtract = false;
+			}
+			render();
 		}, portable));
+		const selfExtractDisabled = portable || !state.form.publishSingleFile;
+		panel.appendChild(toggleField('Include all content for self-extract', !!state.form.includeAllContentForSelfExtract, (value) => {
+			state.form.includeAllContentForSelfExtract = value;
+		}, selfExtractDisabled));
+		panel.appendChild(toggleField('Include native libraries for self-extract', !!state.form.includeNativeLibrariesForSelfExtract, (value) => {
+			state.form.includeNativeLibrariesForSelfExtract = value;
+		}, selfExtractDisabled));
 		panel.appendChild(toggleField('ReadyToRun', !!state.form.publishReadyToRun, (value) => {
 			state.form.publishReadyToRun = value;
 		}, portable));
@@ -491,10 +509,12 @@ function buildCommandPreview(): string {
 	if (state.command === DotnetCommand.publish) {
 		const pub = payload as PublishTaskParams;
 		pushOption('--version-suffix', pub.versionSuffix);
-		if (pub.selfContained) { args.push('--self-contained'); }
+		if (pub.selfContained !== undefined) { args.push('--self-contained', String(pub.selfContained)); }
 		if (pub.noBuild) { args.push('--no-build'); }
 		if (pub.noRestore) { args.push('--no-restore'); }
 		if (pub.publishSingleFile) { args.push('-p:PublishSingleFile=true'); }
+		if (pub.includeAllContentForSelfExtract) { args.push('-p:IncludeAllContentForSelfExtract=true'); }
+		if (pub.includeNativeLibrariesForSelfExtract) { args.push('-p:IncludeNativeLibrariesForSelfExtract=true'); }
 		if (pub.publishTrimmed) { args.push('-p:PublishTrimmed=true'); }
 		if (pub.publishReadyToRun) { args.push('-p:PublishReadyToRun=true'); }
 		if (pub.publishAot) { args.push('-p:PublishAot=true'); }
@@ -550,7 +570,9 @@ function toPayload(): PublishTaskParams | BuildTaskParams {
 			publishSingleFile: state.form.publishSingleFile,
 			publishTrimmed: state.form.publishTrimmed,
 			publishReadyToRun: state.form.publishReadyToRun,
-			publishAot: state.form.publishAot
+			publishAot: state.form.publishAot,
+			includeAllContentForSelfExtract: state.form.includeAllContentForSelfExtract,
+			includeNativeLibrariesForSelfExtract: state.form.includeNativeLibrariesForSelfExtract
 		};
 	}
 

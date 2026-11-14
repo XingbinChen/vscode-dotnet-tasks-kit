@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as path from 'path';
 import { TaskParser } from '../../services/taskParser';
 import { TaskGenerator } from '../../services/taskGenerator';
 import {
@@ -45,7 +46,8 @@ suite('TaskParser Test Suite', () => {
 			verbosity: 'normal',
 			selfContained: true,
 			publishSingleFile: true,
-			publishAot: true
+			publishAot: true,
+			includeNativeLibrariesForSelfExtract: true
 		};
 		const task = TaskGenerator.generatePublishTask(params, 'src/Quarry');
 
@@ -64,6 +66,7 @@ suite('TaskParser Test Suite', () => {
 		assert.strictEqual(parsedParams.selfContained, true);
 		assert.strictEqual(parsedParams.publishSingleFile, true);
 		assert.strictEqual(parsedParams.publishAot, true);
+		assert.strictEqual(parsedParams.includeNativeLibrariesForSelfExtract, true);
 		assert.deepStrictEqual(parsed.extraArgs, []);
 	});
 
@@ -130,6 +133,22 @@ suite('TaskParser Test Suite', () => {
 		assert.strictEqual(parsedParams.configuration, 'Release');
 		assert.strictEqual(parsedParams.framework, 'net8.0');
 		assert.deepStrictEqual(parsed.extraArgs, []);
+	});
+
+	test('parse should preserve explicit self-contained false through editing', () => {
+		for (const flags of [['--self-contained', 'false'], ['--self-contained=false']]) {
+			const task: VscodeTask = {
+				label: 'Framework-dependent', type: 'shell', command: 'dotnet',
+				args: ['publish', 'App.csproj', '--framework', 'net10.0', ...flags]
+			};
+			const parsed = TaskParser.parse(task)!;
+			assert.strictEqual((parsed.params as PublishTaskParams).selfContained, false);
+			const saved = TaskGenerator.generatePublishTask(parsed.params as PublishTaskParams);
+			const index = saved.args!.indexOf('--self-contained');
+			assert.ok(index >= 0);
+			assert.strictEqual(saved.args![index + 1], 'false');
+			assert.deepStrictEqual(parsed.extraArgs, []);
+		}
 	});
 
 	test('parse should handle boolean flags with explicit values', () => {
@@ -199,5 +218,68 @@ suite('TaskParser Test Suite', () => {
 
 		assert.ok(parsed);
 		assert.strictEqual(parsed.params.project, 'src/App/App.csproj');
+	});
+
+	test('getOutputDir should resolve output against options.cwd', () => {
+		const folder = { uri: { fsPath: path.resolve('fake-ws') } };
+		const task: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['publish', 'Quarry.csproj', '--output', 'bin/Publish/net8.0/win-x64/'],
+			options: { cwd: '${workspaceFolder}/src/Quarry' }
+		};
+
+		assert.strictEqual(
+			TaskParser.getOutputDir(task, folder),
+			path.resolve(folder.uri.fsPath, 'src/Quarry', 'bin/Publish/net8.0/win-x64/')
+		);
+	});
+
+	test('getOutputDir should resolve output against the workspace root when there is no cwd', () => {
+		const folder = { uri: { fsPath: path.resolve('fake-ws') } };
+		const task: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['build', 'App.csproj', '-o', 'artifacts/build']
+		};
+
+		assert.strictEqual(
+			TaskParser.getOutputDir(task, folder),
+			path.resolve(folder.uri.fsPath, 'artifacts/build')
+		);
+	});
+
+	test('getOutputDir should handle --output=value syntax and absolute output paths', () => {
+		const folder = { uri: { fsPath: path.resolve('fake-ws') } };
+		const absoluteOutput = path.resolve('somewhere/else');
+		const inlineTask: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['publish', 'App.csproj', `--output=${absoluteOutput}`]
+		};
+
+		assert.strictEqual(TaskParser.getOutputDir(inlineTask, folder), absoluteOutput);
+	});
+
+	test('getOutputDir should return undefined when there is no output argument or it is unresolvable', () => {
+		const folder = { uri: { fsPath: path.resolve('fake-ws') } };
+		const noOutput: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['publish', 'App.csproj']
+		};
+		const variableOutput: VscodeTask = {
+			label: 't',
+			type: 'shell',
+			command: 'dotnet',
+			args: ['publish', 'App.csproj', '--output', '${workspaceFolder}/artifacts']
+		};
+
+		assert.strictEqual(TaskParser.getOutputDir(noOutput, folder), undefined);
+		assert.strictEqual(TaskParser.getOutputDir(variableOutput, folder), undefined);
 	});
 });
